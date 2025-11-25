@@ -2,6 +2,7 @@
 
 #include <Wire.h>
 
+
 namespace kf {
 
 /// @brief OLED дисплей SSD1306 (128x64)
@@ -42,9 +43,17 @@ public:
     explicit SSD1306(u8 address = 0x3C) :
         address{address} {}
 
-    [[nodiscard]] constexpr u8 width() const { return screen_width; }// NOLINT(*-convert-member-functions-to-static)
+    /// @brief Ширина дисплея в пикселях
+    [[nodiscard]] inline constexpr u8 width() const { return screen_width; }// NOLINT(*-convert-member-functions-to-static)
 
-    [[nodiscard]] constexpr u8 height() const { return screen_height; }// NOLINT(*-convert-member-functions-to-static)
+    /// @brief Высота дисплея в пикселях
+    [[nodiscard]] inline constexpr u8 height() const { return screen_height; }// NOLINT(*-convert-member-functions-to-static)
+
+    /// @brief Максимальная координата по X
+    [[nodiscard]] inline constexpr u8 maxX() const { return max_x; }// NOLINT(*-convert-member-functions-to-static)
+
+    /// @brief Максимальный индекс страницы
+    [[nodiscard]] inline constexpr u8 maxPage() const { return max_page; }// NOLINT(*-convert-member-functions-to-static)
 
     /// @brief Инициализация дисплея
     [[nodiscard]] bool init() const {
@@ -79,7 +88,8 @@ public:
             SetComPins, 0x12,
 
             // Мультиплексирование (64 строки)
-            SetMultiplex, 0x3F};
+            SetMultiplex, 0x3F
+        };
 
         if (not Wire.begin()) { return false; }
 
@@ -95,10 +105,10 @@ public:
     /// @brief Установка контрастности
     void setContrast(u8 value) const {
         Wire.beginTransmission(address);
-        Wire.write(CommandMode);
-        Wire.write(Contrast);
-        Wire.write(value);
-        Wire.endTransmission();
+        (void) Wire.write(CommandMode);
+        (void) Wire.write(Contrast);
+        (void) Wire.write(value);
+        (void) Wire.endTransmission();
     }
 
     /// @brief Включение/выключение питания
@@ -133,14 +143,19 @@ public:
         };
 
         Wire.beginTransmission(address);
-        Wire.write(set_area_commands, sizeof(set_area_commands));
-        Wire.endTransmission();
+        (void) Wire.write(set_area_commands, sizeof(set_area_commands));
+        (void) Wire.endTransmission();
 
-        for (u8 *p = buffer, *end = buffer + buffer_size; p < end; p += packet_size) {
+        auto p = buffer;
+        const auto *end = buffer + buffer_size;
+
+        while (p < end) {
             Wire.beginTransmission(address);
-            Wire.write(Command::DataMode);
-            Wire.write(p, packet_size);
-            Wire.endTransmission();
+            (void) Wire.write(Command::DataMode);
+            (void) Wire.write(p, packet_size);
+            (void) Wire.endTransmission();
+
+            p += packet_size;
         }
     }
 
@@ -227,9 +242,9 @@ private:
     /// @brief Отправка одиночной команды
     void sendCommand(Command command) const {
         Wire.beginTransmission(address);
-        Wire.write(OneCommandMode);
-        Wire.write(static_cast<u8>(command));
-        Wire.endTransmission();
+        (void) Wire.write(OneCommandMode);
+        (void) Wire.write(static_cast<u8>(command));
+        (void) Wire.endTransmission();
     }
 };
 
