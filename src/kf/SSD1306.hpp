@@ -1,38 +1,15 @@
 ﻿#pragma once
 
 #include <Wire.h>
+#include <kf/aliases.hpp>
 
+#include "kf/DisplayDriver.hpp"
 
 namespace kf {
 
 /// @brief OLED дисплей SSD1306 (128x64)
-struct SSD1306 {
-
-public:
-    using u8 = uint8_t;
-
-private:
-    /// @brief Ширина дисплея в пикселях
-    static constexpr u8 screen_width{128};
-
-    /// @brief Высота дисплея в пикселях
-    static constexpr u8 screen_height{64};
-
-    /// @brief Максимальный индекс столбца
-    static constexpr u8 max_x{screen_width - 1};
-
-    /// @brief Количество страниц (высота/8)
-    static constexpr u8 pages{(screen_height + 7) / 8};
-
-    /// @brief Максимальный индекс страницы
-    static constexpr u8 max_page{pages - 1};
-
-    /// @brief Размер буфера дисплея
-    static constexpr int buffer_size{screen_width * pages};
-
-public:
-    /// @brief буфер дисплея (1024 байта)
-    u8 buffer[buffer_size]{};
+struct SSD1306 : DisplayDriver<SSD1306, u8, 128, 64, /* monochrome = */ true> {
+    friend Self;
 
 private:
     /// @brief I2C адрес дисплея
@@ -43,20 +20,43 @@ public:
     explicit SSD1306(u8 address = 0x3C) :
         address{address} {}
 
-    /// @brief Ширина дисплея в пикселях
-    [[nodiscard]] inline constexpr u8 width() const { return screen_width; }// NOLINT(*-convert-member-functions-to-static)
+    /// @brief Установка контрастности
+    void setContrast(u8 value) const {
+        Wire.beginTransmission(address);
+        (void) Wire.write(CommandMode);
+        (void) Wire.write(Contrast);
+        (void) Wire.write(value);
+        (void) Wire.endTransmission();
+    }
 
-    /// @brief Высота дисплея в пикселях
-    [[nodiscard]] inline constexpr u8 height() const { return screen_height; }// NOLINT(*-convert-member-functions-to-static)
+    /// @brief Включение/выключение питания
+    void setPower(bool on) {
+        sendCommand(on ? DisplayOn : DisplayOff);
+    }
 
-    /// @brief Максимальная координата по X
-    [[nodiscard]] inline constexpr u8 maxX() const { return max_x; }// NOLINT(*-convert-member-functions-to-static)
+    /// @brief Отражение по горизонтали
+    void flipHorizontal(bool flip) {
+        sendCommand(flip ? FlipH : NormalH);
+    }
 
-    /// @brief Максимальный индекс страницы
-    [[nodiscard]] inline constexpr u8 maxPage() const { return max_page; }// NOLINT(*-convert-member-functions-to-static)
+    /// @brief Отражение по вертикали
+    void flipVertical(bool flip) {
+        sendCommand(flip ? FlipV : NormalV);
+    }
 
-    /// @brief Инициализация дисплея
-    [[nodiscard]] bool init() const {
+    /// @brief Инверсия цветов
+    void invert(bool invert) {
+        sendCommand(invert ? InvertDisplay : NormalDisplay);
+    }
+
+private:
+    // DisplayDriver Impl
+
+    kf_nodiscard static u8 getWidthImpl() { return phys_width; }
+
+    kf_nodiscard static u8 getHeightImpl() { return phys_height; }
+
+    kf_nodiscard bool initImpl() const {
         static constexpr u8 init_commands[] = {
             CommandMode,
 
@@ -88,8 +88,7 @@ public:
             SetComPins, 0x12,
 
             // Мультиплексирование (64 строки)
-            SetMultiplex, 0x3F
-        };
+            SetMultiplex, 0x3F};
 
         if (not Wire.begin()) { return false; }
 
@@ -102,52 +101,26 @@ public:
         return 0 == end_transmission_code;
     }
 
-    /// @brief Установка контрастности
-    void setContrast(u8 value) const {
-        Wire.beginTransmission(address);
-        (void) Wire.write(CommandMode);
-        (void) Wire.write(Contrast);
-        (void) Wire.write(value);
-        (void) Wire.endTransmission();
-    }
-
-    /// @brief Включение/выключение питания
-    void setPower(bool on) {
-        sendCommand(on ? DisplayOn : DisplayOff);
-    }
-
-    /// @brief Отражение по горизонтали
-    void flipHorizontal(bool flip) {
-        sendCommand(flip ? FlipH : NormalH);
-    }
-
-    /// @brief Отражение по вертикали
-    void flipVertical(bool flip) {
-        sendCommand(flip ? FlipV : NormalV);
-    }
-
-    /// @brief Инверсия цветов
-    void invert(bool invert) {
-        sendCommand(invert ? InvertDisplay : NormalDisplay);
-    }
-
-    /// @brief Отправить буфер на дисплей
-    void flush() {
+    void sendImpl() {
         static constexpr auto packet_size = 64;// Была замечена максимальная производительность на ESP32
 
         static constexpr u8 set_area_commands[] = {
             CommandMode,
             // Установка окна на весь дисплей
-            ColumnAddr, 0, max_x,
-            PageAddr, 0, max_page,
+            ColumnAddr,
+            0,
+            max_phys_x,
+            PageAddr,
+            0,
+            max_page,
         };
 
         Wire.beginTransmission(address);
         (void) Wire.write(set_area_commands, sizeof(set_area_commands));
         (void) Wire.endTransmission();
 
-        auto p = buffer;
-        const auto *end = buffer + buffer_size;
+        auto p = software_screen_buffer;
+        const auto *end = software_screen_buffer + sizeof(software_screen_buffer);
 
         while (p < end) {
             Wire.beginTransmission(address);
@@ -159,7 +132,8 @@ public:
         }
     }
 
-private:
+    // Display driver Protocol
+
     /// @brief Команды управления SSD1306
     enum Command : u8 {
         /// @brief Выключение дисплея

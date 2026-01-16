@@ -1,21 +1,20 @@
 {
-  "name": "KiraFlux-OLED",
-  "version": "1.2.0",
-  "description": "Lightweight SSD1306 OLED display driver",
+  "name": "KiraFlux-DisDrv",
+  "version": "2.0.0",
+  "description": "Lightweight display driver collection",
   "keywords": [
-    "gfx",
-    "oled",
     "display",
-    "i2c",
-    "I2C",
+    "screen",
     "Wire",
+    "SPI",
     "OLED",
-    "SSD1306",
-    "ssd1306"
+    "TFT",
+    "ST7735",
+    "SSD1306"
   ],
   "repository": {
     "type": "git",
-    "url": "https://github.com/KiraFlux/KiraFlux-OLED.git"
+    "url": "https://github.com/KiraFlux/KiraFlux-DisDrv.git"
   },
   "authors": [
     {
@@ -26,7 +25,9 @@
   "license": "MIT",
   "frameworks": "arduino",
   "platforms": "*",
-  "dependencies": {},
+  "dependencies": {
+    "KiraFlux-ToolBox": "https://github.com/KiraFlux/KiraFlux-ToolBox.git"
+  },
   "export": {
     "include": "src/kf"
   }
