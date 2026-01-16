@@ -16,25 +16,12 @@ private:
         RgbMode = 0x00,
         BgrMode = 0x08,
 
-        /// Зеркальное отображение строки <-> столбцы
         MirrorTranspose = 0x20,
-
-        /// Зеркальное отображение по горизонтали
         MirrorX = 0x40,
-
-        /// Зеркальное отображение по вертикали
         MirrorY = 0x80,
     };
 
 public:
-
-    enum class Orientation : u8 {
-        Normal = 0,
-        ClockWise = MadCtl::MirrorX | MadCtl::MirrorTranspose,
-        Flipped = MadCtl::MirrorX | MadCtl::MirrorY,
-        CounterClockWise = MadCtl::MirrorY | MadCtl::MirrorTranspose,
-    };
-
     struct Settings {
         Orientation orientation;
         u8 pin_spi_slave_select;
@@ -67,29 +54,6 @@ public:
     explicit ST7735(const Settings &settings, SPIClass &spi_instance) :
         settings{settings}, spi{spi_instance} {}
 
-    void setOrientation(Orientation orientation) {
-        const u8 madctl = madctl_base_mode | static_cast<u8>(orientation);
-
-        if ((madctl & MadCtl::MirrorTranspose) == 0) {
-            logical_width = phys_width;
-            logical_height = phys_height;
-        } else {
-            logical_width = phys_height;
-            logical_height = phys_width;
-        }
-
-        sendCommand(Command::MADCTL);
-        sendData(&madctl, sizeof(madctl));
-
-        u8 data[4] = {0x00, 0x00, 0x00, static_cast<u8>(logical_width - 1)};
-        sendCommand(Command::CASET);
-        sendData(data, sizeof(data));
-
-        data[3] = logical_height - 1;
-        sendCommand(Command::RASET);
-        sendData(data, sizeof(data));
-    }
-
 private:
     // Display driver Impl
 
@@ -118,7 +82,7 @@ private:
 
         sendCommand(Command::COLMOD);
         const u8 color_mode{0x05};// 16-bit color
-        sendData(&color_mode, 1);
+        sendData(&color_mode, sizeof(color_mode));
 
         setOrientation(settings.orientation);
 
@@ -131,6 +95,49 @@ private:
     void sendImpl() const {
         sendCommand(Command::RAMWR);
         sendData(reinterpret_cast<const u8 *>(software_screen_buffer), sizeof(software_screen_buffer));
+    }
+
+    void setOrientationImpl(Orientation orientation) {
+        constexpr u8 orient_to_transform[]{
+            // Orientation::Normal
+            0,
+
+            // Orientation::MirrorX
+            MadCtl::MirrorX,
+
+            // Orientation::MirrorY
+            MadCtl::MirrorY,
+
+            // Orientation::Flip
+            MadCtl::MirrorX | MadCtl::MirrorY,
+
+            // Orientation::ClockWise
+            MadCtl::MirrorX | MadCtl::MirrorTranspose,
+
+            // Orientation::CounterClockWise
+            MadCtl::MirrorY | MadCtl::MirrorTranspose,
+        };
+
+        const u8 madctl = madctl_base_mode | orient_to_transform[static_cast<int>(orientation)];
+
+        if (madctl & MadCtl::MirrorTranspose) {
+            logical_width = phys_height;
+            logical_height = phys_width;
+        } else {
+            logical_width = phys_width;
+            logical_height = phys_height;
+        }
+
+        sendCommand(Command::MADCTL);
+        sendData(&madctl, sizeof(madctl));
+
+        u8 data[4] = {0x00, 0x00, 0x00, static_cast<u8>(logical_width - 1)};
+        sendCommand(Command::CASET);
+        sendData(data, sizeof(data));
+
+        data[3] = logical_height - 1;
+        sendCommand(Command::RASET);
+        sendData(data, sizeof(data));
     }
 
     // Display driver protocol

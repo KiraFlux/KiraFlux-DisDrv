@@ -35,21 +35,46 @@ protected:
     BufferItem software_screen_buffer[buffer_items]{};
 
 public:
+    /// @brief Display Orientation
+    enum class Orientation : u8 {
+        /// @brief normal
+        Normal = 0,
+
+        /// @brief Mirror Only X axis
+        MirrorX = 1,// 0b01
+
+        /// @brief Mirror Only Y axis
+        MirrorY = 2,// 0b10
+
+        /// @brief Mirror X and Y axis or rotate 180 deg
+        Flip = 3,// 0b11
+
+        /// @brief Rotate 90 deg
+        ClockWise = 4,
+
+        /// @brief Rotate -90 deg
+        CounterClockWise = 5,
+    };
+
     /// @brief Initialize display driver
     // kf_nodiscard bool initImpl() {}
     kf_nodiscard bool init() { return impl().initImpl(); }
 
     /// @brief Get display width in pixels
-    // kf_nodiscard u8 getWidthImpl() {}
+    // kf_nodiscard u8 getWidthImpl() const {}
     kf_nodiscard u8 width() const { return c_impl().getWidthImpl(); }
 
     /// @brief Get display height in pixels
-    // kf_nodiscard u8 getHeightImpl() {}
+    // kf_nodiscard u8 getHeightImpl() const {}
     kf_nodiscard u8 height() const { return c_impl().getHeightImpl(); }
 
     /// @brief Send buffer on display
     // void sendImpl() {}
     void send() const { c_impl().sendImpl(); }
+
+    /// @brief Set display Orientation
+    // void setOrientationImpl(Orientation orientation) const {}
+    void setOrientation(Orientation orientation) { impl().setOrientationImpl(orientation); }
 
     //
 

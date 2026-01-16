@@ -7,20 +7,20 @@
 
 namespace kf {
 
-/// @brief OLED дисплей SSD1306 (128x64)
+/// @brief SSD1306 OLED display (128x64)
 struct SSD1306 : DisplayDriver<SSD1306, u8, 128, 64, /* monochrome = */ true> {
     friend Self;
 
 private:
-    /// @brief I2C адрес дисплея
+    /// @brief I2C device address
     const u8 address;
 
 public:
-    /// @brief Конструктор с настройкой адреса
+    /// @brief Constructor with address configuration
     explicit SSD1306(u8 address = 0x3C) :
         address{address} {}
 
-    /// @brief Установка контрастности
+    /// @brief Set contrast (0-255)
     void setContrast(u8 value) const {
         Wire.beginTransmission(address);
         (void) Wire.write(CommandMode);
@@ -29,28 +29,18 @@ public:
         (void) Wire.endTransmission();
     }
 
-    /// @brief Включение/выключение питания
+    /// @brief Enable/disable display power
     void setPower(bool on) {
         sendCommand(on ? DisplayOn : DisplayOff);
     }
 
-    /// @brief Отражение по горизонтали
-    void flipHorizontal(bool flip) {
-        sendCommand(flip ? FlipH : NormalH);
-    }
-
-    /// @brief Отражение по вертикали
-    void flipVertical(bool flip) {
-        sendCommand(flip ? FlipV : NormalV);
-    }
-
-    /// @brief Инверсия цветов
+    /// @brief Color inversion
     void invert(bool invert) {
         sendCommand(invert ? InvertDisplay : NormalDisplay);
     }
 
 private:
-    // DisplayDriver Impl
+    // DisplayDriver implementation
 
     kf_nodiscard static u8 getWidthImpl() { return phys_width; }
 
@@ -60,34 +50,34 @@ private:
         static constexpr u8 init_commands[] = {
             CommandMode,
 
-            // Выключение для безопасной конфигурации
+            // Turn off for safe configuration
             DisplayOff,
 
-            // Установка делителя частоты
+            // Clock divider
             ClockDiv, 0x80,
 
-            // Активация внутреннего преобразователя
+            // Enable internal charge pump
             ChargePump, 0x14,
 
-            // Горизонтальный режим адресации
+            // Horizontal addressing mode
             AddressingMode, Horizontal,
 
-            // Контраст по умолчанию 127
+            // Default contrast 127
             Contrast, 0x7F,
 
-            // Напряжение VCOM
+            // VCOM voltage
             SetVcomDetect, 0x40,
 
-            // Нормальная ориентация дисплея
+            // Normal orientation
             NormalH, NormalV,
 
-            // Включение дисплея
+            // Turn display on
             DisplayOn,
 
-            // Конфигурация выводов (128x64)
+            // Pin configuration (128x64)
             SetComPins, 0x12,
 
-            // Мультиплексирование (64 строки)
+            // Multiplex (64 lines)
             SetMultiplex, 0x3F};
 
         if (not Wire.begin()) { return false; }
@@ -102,11 +92,11 @@ private:
     }
 
     void sendImpl() {
-        static constexpr auto packet_size = 64;// Была замечена максимальная производительность на ESP32
+        static constexpr auto packet_size = 64;// Optimal for ESP32 performance
 
         static constexpr u8 set_area_commands[] = {
             CommandMode,
-            // Установка окна на весь дисплей
+            // Set full display window
             ColumnAddr,
             0,
             max_phys_x,
@@ -120,7 +110,7 @@ private:
         (void) Wire.endTransmission();
 
         auto p = software_screen_buffer;
-        const auto *end = software_screen_buffer + sizeof(software_screen_buffer);
+        const auto *end = p + sizeof(software_screen_buffer);
 
         while (p < end) {
             Wire.beginTransmission(address);
@@ -132,88 +122,49 @@ private:
         }
     }
 
-    // Display driver Protocol
+    // flip* only
+    void setOrientationImpl(Orientation orientation) {
+        constexpr auto flip_x = 0b01;
+        constexpr auto flip_y = 0b10;
 
-    /// @brief Команды управления SSD1306
+        const u8 flags = static_cast<int>(orientation) & (flip_x | flip_y);
+        sendCommand((flags & flip_x) ? FlipH : NormalH);
+        sendCommand((flags & flip_y) ? FlipV : NormalV);
+    }
+
+    // SSD1306 command protocol
+
     enum Command : u8 {
-        /// @brief Выключение дисплея
         DisplayOff = 0xAE,
-
-        /// @brief Включение дисплея
         DisplayOn = 0xAF,
 
-        //
-
-        /// @brief Режим команд
         CommandMode = 0x00,
-
-        /// @brief Режим одной команды
         OneCommandMode = 0x80,
-
-        /// @brief Режим данных
         DataMode = 0x40,
 
-        //
-
-        /// @brief Установка режима адресации
         AddressingMode = 0x20,
-
-        /// @brief Горизонтальная адресация
         Horizontal = 0x00,
-
-        /// @brief Вертикальная адресация
         Vertical = 0x01,
 
-        //
-
-        /// @brief Обычная вертикальная ориентация
         NormalV = 0xC8,
-
-        /// @brief Отраженная вертикальная ориентация
         FlipV = 0xC0,
-
-        /// @brief Обычная горизонтальная ориентация
         NormalH = 0xA1,
-
-        /// @brief Отраженная горизонтальная ориентация
         FlipH = 0xA0,
 
-        //
-
-        /// @brief Установка контрастности
         Contrast = 0x81,
-
-        /// @brief Настройка пинов COM
         SetComPins = 0xDA,
-
-        /// @brief Настройка VCOM
         SetVcomDetect = 0xDB,
-
-        /// @brief Делитель частоты
         ClockDiv = 0xD5,
-
-        /// @brief Установка мультиплексирования
         SetMultiplex = 0xA8,
-
-        /// @brief Установка столбцов
         ColumnAddr = 0x21,
-
-        /// @brief Установка страниц
         PageAddr = 0x22,
-
-        /// @brief Управление charge pump
         ChargePump = 0x8D,
 
-        // Режимы отображения
-
-        /// @brief Обычный режим отображения
         NormalDisplay = 0xA6,
-
-        /// @brief Инверсный режим отображения
         InvertDisplay = 0xA7
     };
 
-    /// @brief Отправка одиночной команды
+    /// @brief Send single command
     void sendCommand(Command command) const {
         Wire.beginTransmission(address);
         (void) Wire.write(OneCommandMode);
