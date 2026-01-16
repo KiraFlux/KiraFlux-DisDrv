@@ -2,14 +2,15 @@
 
 #include <Wire.h>
 #include <kf/aliases.hpp>
+#include <kf/pixel_traits.hpp>
 
 #include "kf/DisplayDriver.hpp"
 
 namespace kf {
 
 /// @brief SSD1306 OLED display (128x64)
-struct SSD1306 : DisplayDriver<SSD1306, u8, 128, 64, /* monochrome = */ true> {
-    friend Self;
+struct SSD1306 : DisplayDriver<SSD1306, PixelFormat::Monochrome, 128, 64> {
+    friend Base;
 
 private:
     /// @brief I2C device address
@@ -102,7 +103,7 @@ private:
             max_phys_x,
             PageAddr,
             0,
-            max_page,
+            Traits::template pages<phys_width, phys_height> - 1,
         };
 
         Wire.beginTransmission(address);

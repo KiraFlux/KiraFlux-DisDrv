@@ -1,38 +1,37 @@
 #pragma once
 
 #include <kf/attributes.hpp>
+#include <kf/pixel_traits.hpp>
 #include <kf/slice.hpp>
 
 namespace kf {
 
 /// @brief Display Driver static Interface
 /// @tparam Impl Derived type
-/// @tparam T Buffer item type
+/// @tparam Format pixel format
 /// @tparam W Display width
 /// @tparam H Display height
-/// @tparam IsMonochrome true - display is Monochrome, false - colorful
-template<typename Impl, typename T, u8 W, u8 H, bool IsMonochrome> struct DisplayDriver {
+template<typename Impl, PixelFormat Format, u8 W, u8 H> struct DisplayDriver {
     friend Impl;
 
 protected:
-    using Self = DisplayDriver;
+    using Base = DisplayDriver;
+    using Traits = PixelTraits<Format>;
 
-    using BufferItem = T;
+public:
+    using BufferType = typename Traits::BufferType;
+    using ColorType = typename Traits::ColorType;
 
-    static constexpr auto item_bits = 8 * sizeof(BufferItem);
-
+protected:
     static constexpr auto phys_width{W};
     static constexpr auto max_phys_x{phys_width - 1};
 
     static constexpr auto phys_height{H};
     static constexpr auto max_phys_y{phys_height - 1};
 
-    static constexpr auto pages{IsMonochrome ? ((phys_height + item_bits - 1) / item_bits) : phys_height};
-    static constexpr auto max_page{pages - 1};
+    static constexpr auto buffer_items{Traits::template buffer_size<W, H>};
 
-    static constexpr auto buffer_items{phys_width * pages};
-
-    BufferItem software_screen_buffer[buffer_items]{};
+    BufferType software_screen_buffer[buffer_items]{};
 
 public:
     /// @brief Display Orientation
@@ -79,7 +78,7 @@ public:
     //
 
     /// @brief Get Software display buffer
-    kf_nodiscard slice<BufferItem> buffer() { return {software_screen_buffer, buffer_items}; }
+    kf_nodiscard slice<BufferType> buffer() { return {software_screen_buffer, buffer_items}; }
 
     /// @brief Get Max X position
     kf_nodiscard u8 maxX() const { return width() - 1; }

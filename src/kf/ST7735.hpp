@@ -3,13 +3,14 @@
 #include <Arduino.h>
 #include <SPI.h>
 #include <kf/aliases.hpp>
+#include <kf/pixel_traits.hpp>
 
 #include "kf/DisplayDriver.hpp"
 
 namespace kf {
 
-struct ST7735 : DisplayDriver<ST7735, u16, 128, 160, /* monochrome = */ false> {
-    friend Self;
+struct ST7735 : DisplayDriver<ST7735, PixelFormat::RGB565, 128, 160> {
+    friend Base;
 
 private:
     enum MadCtl : u8 {
