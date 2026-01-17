@@ -103,7 +103,7 @@ private:
             max_phys_x,
             PageAddr,
             0,
-            Traits::template pages<phys_width, phys_height> - 1,
+            Traits::template pages<phys_height> - 1,
         };
 
         Wire.beginTransmission(address);
