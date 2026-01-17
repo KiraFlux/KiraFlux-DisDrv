@@ -26,7 +26,6 @@
   "frameworks": "arduino",
   "platforms": "*",
   "dependencies": {
-    "KiraFlux-ToolBox": "https://github.com/KiraFlux/KiraFlux-ToolBox.git"
   },
   "export": {
     "include": "src/kf"
