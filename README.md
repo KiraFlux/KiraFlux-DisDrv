@@ -1,22 +1,22 @@
 # KiraFlux-DisDrv
 
-Библиотека драйверов дисплеев для микроконтроллеров с единым интерфейсом.
+Display driver library for microcontrollers with a unified interface.
 
-## Драйверы
+## Drivers
 
-* **SSD1306**: монохромный OLED, 128×64 пикселей, I2C
-* **ST7735**: цветной TFT, 128×160 пикселей, 16-битный цвет (RGB565), SPI
+* **SSD1306**: monochrome OLED, 128×64 pixels, I2C
+* **ST7735**: color TFT, 128×160 pixels, 16-bit color (RGB565), SPI
 
-## Особенности
+## Features
 
-* **Единый API**: базовый класс `DisplayDriver` с методами `init()`, `send()`, `width()`, `height()`, `setOrientation()`
-* **CRTP**: статический полиморфизм через шаблон `DisplayDriver<Impl, ...>`
-* **Доступ к буферу**: метод `buffer()` возвращает `kf::slice<BufferItem>` для работы с данными
-* **Ориентация**: поддержка отражений и поворотов через `setOrientation()`
+* **Unified API**: base class `DisplayDriver` with methods `init()`, `send()`, `width()`, `height()`, `setOrientation()`
+* **CRTP**: static polymorphism via template `DisplayDriver<Impl, ...>`
+* **Buffer access**: method `buffer()` returns `kf::slice<BufferItem>` for data manipulation
+* **Orientation**: support for reflections and rotations via `setOrientation()`
 
-## Быстрый старт
+## Quick Start
 
-### Установка
+### Installation
 
 ```ini
 lib_deps =
@@ -27,18 +27,20 @@ lib_deps =
 ### SSD1306
 
 ```cpp
-#include <kf/SSD1306.hpp>
 #include <Wire.h>
+#include <kf/SSD1306.hpp>
 
 kf::SSD1306 oled{0x3C};
 
 void setup() {
     Wire.begin();
     oled.init();
-    
+
     auto buf = oled.buffer();
-    for (usize i = 0; i < buf.size(); ++i) buf.data()[i] = 0xAA;
-    
+    for (usize i = 0; i < buf.size(); ++i) {
+        buf.data()[i] = 0xAA;
+    }
+
     oled.send();
 }
 ```
@@ -46,8 +48,8 @@ void setup() {
 ### ST7735
 
 ```cpp
-#include <kf/ST7735.hpp>
 #include <SPI.h>
+#include <kf/ST7735.hpp>
 
 SPIClass hspi{HSPI};
 kf::ST7735::Settings tft_settings{15, 2, 4};
@@ -55,10 +57,12 @@ kf::ST7735 tft{tft_settings, hspi};
 
 void setup() {
     tft.init();
-    
+
     auto buf = tft.buffer();
-    for (usize i = 0; i < buf.size(); ++i) buf.data()[i] = 0xF800;
-    
+    for (usize i = 0; i < buf.size(); ++i) {
+        buf.data()[i] = 0xF800;
+    }
+
     tft.send();
 }
 ```
@@ -109,11 +113,11 @@ struct Settings {
 explicit ST7735(const Settings &settings, SPIClass &spi_instance);
 ```
 
-## Формат буфера
+## Buffer Format
 
-* **SSD1306**: `slice<u8>` размером 1024 байта. Биты в каждом байте — вертикальные пиксели.
-* **ST7735**: `slice<u16>` размером 128×160 элементов. RGB565 формат.
+* **SSD1306**: `slice<u8>` with a size of 1024 bytes. Bits in each byte represent vertical pixels.
+* **ST7735**: `slice<u16>` with a size of 128×160 elements. RGB565 format.
 
-## Лицензия
+## License
 
-MIT License
+[MIT License](LICENSE)
